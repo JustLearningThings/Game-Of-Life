@@ -1,167 +1,169 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Game : MonoBehaviour
-{
-    private static int SCREEN_WIDTH = 64;
-    private static int SCREEN_HEIGHT = 48;
+public class Game : MonoBehaviour {
+	private const int   ScreenWidth  = 64;
+	private const int   ScreenHeight = 48;
+	private       float _timer;
 
-    public Cell cellObject;
-    public float speed = 0.1f;
+	public Cell  cellObject;
+	public float speed = .1f;
+	public bool  simulationEnabled;
 
-    private float timer = 0;
+	private readonly Cell[,] _grid;
+	private          Camera  _camera;
+	private          bool    IsCameraNotNull => _camera != null;
 
-    public bool simulationEnabled = false;
+	public AudioSource audioSource;
 
-    Cell[,] grid = new Cell[SCREEN_WIDTH, SCREEN_HEIGHT];
+	public Game() {
+		_grid = new Cell[ScreenWidth, ScreenHeight];
+	}
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        PlaceCells(1);
-    }
+	private void Start() {
+		_camera      = Camera.main;
+		PlaceCells(1);
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (simulationEnabled) {
-            if (timer >= speed) {    
-                timer = 0f;
+		Debug.Log(StaticData.IsMuted);
+		audioSource.mute = StaticData.IsMuted;
+	}
 
-                CountNeighbors();   
-                PopulationControl();
-            } else {
-                timer += Time.deltaTime;
-            }
-        }
+	private void Update() {
+		UserInput();
+		if (!simulationEnabled) {
+			return;
+		}
 
-        UserInput();
-    }
+		if (_timer >= speed) {
+			_timer = 0;
 
-    void UserInput() {
-        if (Input.GetMouseButtonDown(0)) {
-            Vector2 mousePoint = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            int x = Mathf.RoundToInt(mousePoint.x);
-            int y = Mathf.RoundToInt(mousePoint.y);
+			CountNeighbors();
+			PopulationControl();
+		}
+		else {
+			_timer += Time.deltaTime;
+		}
+	}
 
-            if (x >= 0 && y >= 0 && x < SCREEN_WIDTH && y < SCREEN_HEIGHT) {
-                grid[x, y].SetAlive(!grid[x, y].isAlive);
-            }
-        }
+	private void UserInput() {
+		if (Input.GetKey(KeyCode.Escape)) {
+			Application.Quit();
+		}
 
-        if (Input.GetKeyUp(KeyCode.P)) {
-            simulationEnabled = false;
-        }
-        
-        if (Input.GetKeyUp(KeyCode.B)) {
-            simulationEnabled = true;
-        }
-    }
+		if (Input.GetMouseButtonDown(0)) {
+			if (IsCameraNotNull) {
+				Vector2 mousePoint = _camera.ScreenToWorldPoint(Input.mousePosition);
+				int     x          = Mathf.RoundToInt(mousePoint.x);
+				int     y          = Mathf.RoundToInt(mousePoint.y);
 
-    void PlaceCells(int type) {
-        if (type == 1) {
-            for (int y = 0; y < SCREEN_HEIGHT; y++)
-                for (int x = 0; x < SCREEN_WIDTH; x++) {
-                    Cell cell = Instantiate(cellObject, new Vector3 (x, y, 0), Quaternion.identity);
+				if (x >= 0 && y >= 0 && x < ScreenWidth && y < ScreenHeight) {
+					_grid[x, y].Alive = !_grid[x, y].Alive;
+				}
+			}
+		}
 
-                    grid[x, y] = cell;
-                    grid[x, y].SetAlive(false);
-                }                    
-            
-            for (int y = 21; y < 24; y++)
-                for (int x = 31; x < 38; x++) {
-                    if (x != 34) {
-                        if (y == 21 || y == 23) {
-                            grid[x, y].SetAlive(true);
-                        }
-                        else if (y == 22 && ((x != 32) && (x != 36))) {
-                            grid[x, y].SetAlive(true);
-                        }
-                    }
-                }                    
-        }
-        else if (type == 2) {
-            for (int y = 0; y < SCREEN_HEIGHT; y++)
-                for (int x = 0; x < SCREEN_WIDTH; x++) {
-                    Cell cell = Instantiate(cellObject, new Vector3 (x, y, 0), Quaternion.identity);
+		if (Input.GetKey(KeyCode.P)) {
+			simulationEnabled = false;
+		}
+		else if (Input.GetKey(KeyCode.B)) {
+			simulationEnabled = true;
+		}
+	}
 
-                    grid[x, y] = cell;
-                    grid[x, y].SetAlive(RandomAliveCell());
-                }
-        }
-    }
+	void PlaceCells(int type) {
+		if (type == 1) {
+			for (int y = 0; y < ScreenHeight; y++)
+			for (int x = 0; x < ScreenWidth; x++) {
+				Cell cell = Instantiate(cellObject, new Vector3(x, y, 0), Quaternion.identity);
 
-    void CountNeighbors() {
-        for (int y = 0; y < SCREEN_HEIGHT; y++) {
-            for (int x = 0; x < SCREEN_WIDTH; x++) {
-                int numNeighbors = 0;
+				_grid[x, y]       = cell;
+				_grid[x, y].Alive = false;
+			}
 
-                if (y + 1 < SCREEN_HEIGHT) {
-                    if (grid[x, y + 1].isAlive)
-                        numNeighbors++;
-                }
+			for (int y = 21; y < 24; y++)
+			for (int x = 31; x < 38; x++) {
+				if (x != 34) {
+					if (y == 21 || y == 23) {
+						_grid[x, y].Alive = true;
+					}
+					else if (y == 22 && ((x != 32) && (x != 36))) {
+						_grid[x, y].Alive = true;
+					}
+				}
+			}
+		}
+		else if (type == 2) {
+			for (int y = 0; y < ScreenHeight; y++)
+			for (int x = 0; x < ScreenWidth; x++) {
+				Cell cell = Instantiate(cellObject, new Vector3(x, y, 0), Quaternion.identity);
 
-                if (x + 1 < SCREEN_WIDTH) {
-                    if (grid[x + 1, y].isAlive)
-                        numNeighbors++;
-                }
+				_grid[x, y]       = cell;
+				_grid[x, y].Alive = RandomAliveCell();
+			}
+		}
+	}
 
-                if (y - 1 >= 0) {
-                    if (grid[x, y - 1].isAlive)
-                        numNeighbors++;
-                }
+	private void CountNeighbors() {
+		for (int x = 0; x < ScreenWidth; x++) {
+			for (int y = 0; y < ScreenHeight; y++) {
+				int numNeighbors = 0;
 
-                if (x - 1 >= 0) {
-                    if (grid[x - 1, y].isAlive)
-                        numNeighbors++;
-                }
+				if (y + 1 < ScreenHeight) {
+					if (_grid[x, y + 1].Alive)
+						numNeighbors++;
+				}
 
-                if (x + 1 < SCREEN_WIDTH && y + 1 < SCREEN_HEIGHT) {
-                    if (grid[x + 1, y + 1].isAlive)
-                        numNeighbors++;
-                }
+				if (x + 1 < ScreenWidth) {
+					if (_grid[x + 1, y].Alive)
+						numNeighbors++;
+				}
 
-                if (x - 1 >= 0 && y + 1 < SCREEN_HEIGHT) {
-                    if (grid[x - 1, y + 1].isAlive)
-                        numNeighbors++;
-                }
+				if (y - 1 >= 0) {
+					if (_grid[x, y - 1].Alive)
+						numNeighbors++;
+				}
 
-                if (x + 1 < SCREEN_WIDTH && y - 1 >= 0) {
-                    if (grid[x + 1, y - 1].isAlive)
-                        numNeighbors++;
-                }
+				if (x - 1 >= 0) {
+					if (_grid[x - 1, y].Alive)
+						numNeighbors++;
+				}
 
-                if (x - 1 >= 0 && y - 1 >= 0) {
-                    if (grid[x - 1, y - 1].isAlive)
-                        numNeighbors++;
-                }
+				if (x + 1 < ScreenWidth && y + 1 < ScreenHeight) {
+					if (_grid[x + 1, y + 1].Alive)
+						numNeighbors++;
+				}
 
-                grid[x, y].numNeighbors = numNeighbors;
-            }
-        }
-    }
+				if (x - 1 >= 0 && y + 1 < ScreenHeight) {
+					if (_grid[x - 1, y + 1].Alive)
+						numNeighbors++;
+				}
 
-    void PopulationControl() {
-        for (int y = 0; y < SCREEN_HEIGHT; y++)
-            for (int x = 0; x < SCREEN_WIDTH; x++) {
-                // RULES
-                if (grid[x, y].isAlive) {
-                    if (grid[x, y].numNeighbors != 2 && grid[x, y].numNeighbors != 3)
-                        grid[x, y].SetAlive(false);
-                } else {
-                    if (grid[x, y].numNeighbors == 3)
-                        grid[x, y].SetAlive(true);
-                }
-            }
-    }
+				if (x + 1 < ScreenWidth && y - 1 >= 0) {
+					if (_grid[x + 1, y - 1].Alive)
+						numNeighbors++;
+				}
 
-    bool RandomAliveCell() {
-        int rand = UnityEngine.Random.Range(0, 100);
+				if (x - 1 >= 0 && y - 1 >= 0) {
+					if (_grid[x - 1, y - 1].Alive)
+						numNeighbors++;
+				}
 
-        if (rand > 75)
-            return true;
-        
-        return false;
-    }
+				_grid[x, y].NeighborsNum = numNeighbors;
+			}
+		}
+	}
+
+	private void PopulationControl() {
+		for (int x = 0; x < ScreenWidth; x++) {
+			for (int y = 0; y < ScreenHeight; y++)
+				if (_grid[x, y].Alive) {
+					if (_grid[x, y].NeighborsNum is not 2 or 3)
+						_grid[x, y].Alive = false;
+				}
+				else if (_grid[x, y].NeighborsNum == 3) {
+					_grid[x, y].Alive = true;
+				}
+		}
+	}
+
+	private static bool RandomAliveCell() => Random.Range(0, 100) > 75;
 }

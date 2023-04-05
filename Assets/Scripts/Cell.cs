@@ -1,20 +1,16 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Cell : MonoBehaviour
-{
-    public bool isAlive = false;
-    public int numNeighbors = 0;
+public class Cell : MonoBehaviour {
+	private bool _alive;
 
-    public void SetAlive(bool alive) {
-        isAlive = alive;
+	public bool Alive {
+		get => _alive;
+		set {
+			GetComponent<SpriteRenderer>().enabled = value;
+			_alive                                 = value;
+		}
+	}
 
-        if (alive) {
-            GetComponent<SpriteRenderer>().enabled = true;
-        }
-        else {
-            GetComponent<SpriteRenderer>().enabled = false;
-        }
-    }
+
+	public int NeighborsNum;
 }
