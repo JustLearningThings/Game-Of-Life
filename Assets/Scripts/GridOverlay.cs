@@ -1,24 +1,21 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class GridOverlay : MonoBehaviour {
 	private Material _lineMaterial;
 
 	public bool showMain = true;
-	public bool showSub  = false;
+	public bool showSub;
 
 	public int gridSizeX = 64;
 	public int gridSizeY = 48;
 
 	public float startX = -0.5f;
 	public float startY = -0.5f;
-	public float startZ = 0f;
+	public float startZ;
 
 	public float smallStep = 1;
 	public float largeStep = 8;
 
-	public                  Color mainColor = new Color(0f, 1f,   0f, 0f);
 	public                  Color subColor  = new Color(0f, 0.5f, 0f, 1f);
 	private static readonly int   SrcBlend  = Shader.PropertyToID("_SrcBlend");
 	private static readonly int   DstBlend  = Shader.PropertyToID("_DstBlend");
