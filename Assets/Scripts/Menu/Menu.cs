@@ -6,7 +6,8 @@ using UnityEngine.UI;
 public class Menu : MonoBehaviour {
 	private GameObject      _gameSpeedSlider;
 	private TextMeshProUGUI _gameSpeedText;
-	public  AudioSource     audioSource;
+
+	public AudioSource audioSource;
 
 	private void Start() {
 		_gameSpeedSlider = GameObject.Find("Game Speed Slider");
@@ -14,8 +15,12 @@ public class Menu : MonoBehaviour {
 
 		_gameSpeedText.text = Convert.ToInt32(GameData.GameSpeed * 100).ToString();
 
-		_gameSpeedSlider
-			.GetComponent<Slider>()
+		Slider slider = _gameSpeedSlider
+			.GetComponent<Slider>();
+
+		slider.value = GameData.GameSpeed;
+
+		slider
 			.onValueChanged
 			.AddListener(value => GameData.GameSpeed = value);
 	}

@@ -3,6 +3,7 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 public class Game : MonoBehaviour {
+	private             bool    _guiShown    = true;
 	private const       int     ScreenWidth  = 64;
 	private const       int     ScreenHeight = 48;
 	private             float   _timer;
@@ -13,8 +14,17 @@ public class Game : MonoBehaviour {
 	private             Camera  _camera;
 	private             bool    IsCameraNotNull => _camera != null;
 
-	public Cell        cellObject;
-	public AudioSource audioSource;
+	public  Cell        cellObject;
+	public  AudioSource audioSource;
+	private Canvas      _gui;
+
+	private bool GuiShown {
+		get => _guiShown;
+		set {
+			_gui.enabled = value;
+			_guiShown                                   = value;
+		}
+	}
 
 	public Game() {
 		_grid = new Cell[ScreenWidth, ScreenHeight];
@@ -22,7 +32,9 @@ public class Game : MonoBehaviour {
 
 	private void Start() {
 		_camera = Camera.main;
-		PlaceCells(1);
+		_gui    = GameObject.Find("GUI").GetComponent<Canvas>();
+
+		PlaceCells();
 
 		audioSource.mute = GameData.Muted;
 	}
@@ -44,12 +56,12 @@ public class Game : MonoBehaviour {
 				_prevCellDrawn    = _grid[x, y];
 			}
 		}
-		
+
 		if (GameData.Paused) {
 			return;
 		}
 
-		if (_timer >= GameData.GameSpeed) {
+		if (_timer >= 1.1 - GameData.GameSpeed) {
 			_timer = 0;
 
 			CountNeighbors();
@@ -71,6 +83,7 @@ public class Game : MonoBehaviour {
 		else if (Input.GetMouseButtonUp((int)MouseButton.Left) && IsCameraNotNull) {
 			_lmbPressed = false;
 		}
+
 		if (Input.GetMouseButtonDown((int)MouseButton.Right) && IsCameraNotNull) {
 			_rmbPressed = true;
 		}
@@ -81,54 +94,30 @@ public class Game : MonoBehaviour {
 		if (Input.GetKeyDown(KeyCode.Space)) {
 			GameData.Paused = !GameData.Paused;
 		}
+
+		if (Input.GetKeyDown(KeyCode.F)) {
+			GuiShown = !GuiShown;
+		}
 	}
 
-	private void PlaceCells(int type) {
-		switch (type) {
-			case 1: {
-				for (int y = 0; y < ScreenHeight; y++) {
-					for (int x = 0; x < ScreenWidth; x++) {
-						Cell cell = Instantiate(cellObject, new Vector3(x, y, 0), Quaternion.identity);
+	private void PlaceCells() {
+		for (int x = 0; x < ScreenWidth; x++) {
+			for (int y = 0; y < ScreenHeight; y++) {
+				Cell cell = Instantiate(cellObject, new Vector2(x, y), Quaternion.identity);
+				cell.X     = x;
+				cell.Y     = y;
+				cell.Alive = false;
 
-						_grid[x, y]       = cell;
-						_grid[x, y].Alive = false;
-					}
-				}
-
-				for (int x = 31; x < 38; x++) {
-					for (int y = 21; y < 24; y++) {
-						if (x != 34) {
-							switch (y) {
-								case 21 or 23:
-								case 22 when ((x != 32) && (x != 36)):
-									_grid[x, y].Alive = true;
-									break;
-							}
-						}
-					}
-				}
-
-				break;
-			}
-			case 2: {
-				for (int x = 0; x < ScreenWidth; x++) {
-					for (int y = 0; y < ScreenHeight; y++) {
-						Cell cell = Instantiate(cellObject, new Vector3(x, y, 0), Quaternion.identity);
-
-						_grid[x, y]       = cell;
-						_grid[x, y].Alive = RandomAliveCell();
-					}
-				}
-
-				break;
+				_grid[x, y] = cell;
 			}
 		}
 	}
 
 	private void CountNeighbors() {
+		int numNeighbors;
 		for (int x = 0; x < ScreenWidth; x++) {
 			for (int y = 0; y < ScreenHeight; y++) {
-				int numNeighbors = 0;
+				numNeighbors = 0;
 
 				if (y + 1 < ScreenHeight) {
 					if (_grid[x, y + 1].Alive) {
@@ -185,14 +174,14 @@ public class Game : MonoBehaviour {
 
 	private void PopulationControl() {
 		for (int x = 0; x < ScreenWidth; x++) {
-			for (int y = 0; y < ScreenHeight; y++)
-				if (_grid[x, y].Alive) {
-					if (_grid[x, y].NeighborsNum is not 2 or 3)
-						_grid[x, y].Alive = false;
-				}
-				else if (_grid[x, y].NeighborsNum == 3) {
+			for (int y = 0; y < ScreenHeight; y++) {
+				if (_grid[x, y].NeighborsNum == 2 && _grid[x, y].Alive || _grid[x, y].NeighborsNum == 3) {
 					_grid[x, y].Alive = true;
 				}
+				else {
+					_grid[x, y].Alive = false;
+				}
+			}
 		}
 	}
 
