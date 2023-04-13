@@ -22,7 +22,7 @@ public class Game : MonoBehaviour {
 		get => _guiShown;
 		set {
 			_gui.enabled = value;
-			_guiShown                                   = value;
+			_guiShown    = value;
 		}
 	}
 
@@ -42,7 +42,7 @@ public class Game : MonoBehaviour {
 	private void Update() {
 		UserInput();
 
-		if (_lmbPressed || _rmbPressed) {
+		if ((_lmbPressed || _rmbPressed) && !GuiShown) {
 			Vector2 mousePoint = _camera.ScreenToWorldPoint(Input.mousePosition);
 			int     x          = Mathf.RoundToInt(mousePoint.x);
 			int     y          = Mathf.RoundToInt(mousePoint.y);
@@ -96,7 +96,7 @@ public class Game : MonoBehaviour {
 		}
 
 		if (Input.GetKeyDown(KeyCode.F)) {
-			GuiShown = !GuiShown;
+			ToggleGui();
 		}
 	}
 
@@ -185,5 +185,11 @@ public class Game : MonoBehaviour {
 		}
 	}
 
-	private static bool RandomAliveCell() => Random.Range(0, 100) > 75;
+	private void ToggleGui() {
+		GuiShown          = !GuiShown;
+		Debug.Log(GuiShown);
+
+		Canvas grid = GameObject.Find("Grid").GetComponent<Canvas>();
+		grid.enabled = !GuiShown;
+	}
 }
