@@ -1,35 +1,33 @@
-using JetBrains.Annotations;
 using Unity.VisualScripting;
 using UnityEngine;
 
-public class Game : MonoBehaviour {
-	private             bool    _guiShown    = true;
-	private const       int     ScreenWidth  = 64;
-	private const       int     ScreenHeight = 48;
-	private             float   _timer;
-	private             bool    _lmbPressed;
-	private             bool    _rmbPressed;
-	[CanBeNull] private Cell    _prevCellDrawn;
-	private readonly    Cell[,] _grid;
-	private             Camera  _camera;
-	private             bool    IsCameraNotNull => _camera != null;
 
-	public  Cell        cellObject;
+public class Game : MonoBehaviour {
+	private          bool    _guiShown    = true;
+	private const    int     ScreenWidth  = 64;
+	private const    int     ScreenHeight = 48;
+	private          float   _timer;
+	private          bool    _lmbPressed;
+	private          bool    _rmbPressed;
+	private readonly Cell[,] _grid;
+	private          Camera  _camera;
+	private          bool    IsCameraNotNull => _camera != null;
+
 	public  AudioSource audioSource;
 	private Canvas      _gui;
 
-	private bool GuiShown {
-		get => _guiShown;
-		set {
-			_gui.enabled = value;
-			_guiShown    = value;
-		}
-	}
+	private bool _isDrawingZone;
+	private int  _zoneX1 = -1;
+	private int  _zoneX2 = -1;
+
+	private int _zoneY1 = -1;
+	private int _zoneY2 = -1;
 
 	public Game() {
 		_grid = new Cell[ScreenWidth, ScreenHeight];
 	}
 
+	// Initialization of game
 	private void Start() {
 		_camera = Camera.main;
 		_gui    = GameObject.Find("GUI").GetComponent<Canvas>();
@@ -39,21 +37,37 @@ public class Game : MonoBehaviour {
 		audioSource.mute = GameData.Muted;
 	}
 
+	// Run every frame (60 fps)
 	private void Update() {
 		UserInput();
 
-		if ((_lmbPressed || _rmbPressed) && !GuiShown) {
+		if (_isDrawingZone && Input.GetMouseButtonUp((int)MouseButton.Left)) {
 			Vector2 mousePoint = _camera.ScreenToWorldPoint(Input.mousePosition);
 			int     x          = Mathf.RoundToInt(mousePoint.x);
 			int     y          = Mathf.RoundToInt(mousePoint.y);
 
+			_isDrawingZone = false;
+			_zoneX2        = x;
+			_zoneY2        = y;
+			Debug.Log($"Game Zone created at ({_zoneX1},{_zoneY1})-({_zoneX2},{_zoneY2})");
+		}
+
+		if ((_lmbPressed || _rmbPressed) && !_guiShown) {
+			Vector2 mousePoint = _camera.ScreenToWorldPoint(Input.mousePosition);
+			int     x          = Mathf.RoundToInt(mousePoint.x);
+			int     y          = Mathf.RoundToInt(mousePoint.y);
+
+			if (_lmbPressed && Input.GetKeyDown(KeyCode.LeftShift)) {
+				_zoneX1        = x;
+				_zoneY1        = y;
+				_isDrawingZone = true;
+			}
+
 			if (
 				x is >= 0 and < ScreenWidth
 				&& y is >= 0 and < ScreenHeight
-				&& _prevCellDrawn != _grid[x, y]
 			) {
 				_grid[x, y].Alive = _lmbPressed;
-				_prevCellDrawn    = _grid[x, y];
 			}
 		}
 
@@ -61,17 +75,17 @@ public class Game : MonoBehaviour {
 			return;
 		}
 
-		if (_timer >= 1.1 - GameData.GameSpeed) {
+		if (_timer >= 1.05 - GameData.GameSpeed) {
 			_timer = 0;
 
-			CountNeighbors();
-			PopulationControl();
+			ComputeTickLogic();
 		}
 		else {
 			_timer += Time.deltaTime;
 		}
 	}
 
+	// Process keyboard and mouse events
 	private void UserInput() {
 		if (Input.GetKey(KeyCode.Escape)) {
 			Application.Quit();
@@ -96,100 +110,125 @@ public class Game : MonoBehaviour {
 		}
 
 		if (Input.GetKeyDown(KeyCode.F)) {
-			ToggleGui();
+			_guiShown    = !_guiShown;
+			_gui.enabled = _guiShown;
+		}
+
+		if (Input.GetKeyDown(KeyCode.R)) {
+			ResetCells();
 		}
 	}
 
+	// Init grid
 	private void PlaceCells() {
+		GameObject cellObject = new() {
+			transform = {
+				position = Vector3.zero,
+				rotation = Quaternion.identity
+			},
+			name = "Cell"
+		};
+
+		SpriteRenderer sr = cellObject.AddComponent<SpriteRenderer>();
+		sr.sprite = Resources.Load<Sprite>("Prefabs/Cell");
+
+		Cell cell = cellObject.AddComponent<Cell>();
+		cell.X            = 0;
+		cell.Y            = 0;
+		cell.Alive        = false;
+		cell.NeighborsNum = 0;
+
 		for (int x = 0; x < ScreenWidth; x++) {
 			for (int y = 0; y < ScreenHeight; y++) {
-				Cell cell = Instantiate(cellObject, new Vector2(x, y), Quaternion.identity);
-				cell.X     = x;
-				cell.Y     = y;
-				cell.Alive = false;
-
-				_grid[x, y] = cell;
-			}
-		}
-	}
-
-	private void CountNeighbors() {
-		int numNeighbors;
-		for (int x = 0; x < ScreenWidth; x++) {
-			for (int y = 0; y < ScreenHeight; y++) {
-				numNeighbors = 0;
-
-				if (y + 1 < ScreenHeight) {
-					if (_grid[x, y + 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x + 1 < ScreenWidth) {
-					if (_grid[x + 1, y].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (y - 1 >= 0) {
-					if (_grid[x, y - 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x - 1 >= 0) {
-					if (_grid[x - 1, y].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x + 1 < ScreenWidth && y + 1 < ScreenHeight) {
-					if (_grid[x + 1, y + 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x - 1 >= 0 && y + 1 < ScreenHeight) {
-					if (_grid[x - 1, y + 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x + 1 < ScreenWidth && y - 1 >= 0) {
-					if (_grid[x + 1, y - 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				if (x - 1 >= 0 && y - 1 >= 0) {
-					if (_grid[x - 1, y - 1].Alive) {
-						numNeighbors++;
-					}
-				}
-
-				_grid[x, y].NeighborsNum = numNeighbors;
-			}
-		}
-	}
-
-	private void PopulationControl() {
-		for (int x = 0; x < ScreenWidth; x++) {
-			for (int y = 0; y < ScreenHeight; y++) {
-				if (_grid[x, y].NeighborsNum == 2 && _grid[x, y].Alive || _grid[x, y].NeighborsNum == 3) {
-					_grid[x, y].Alive = true;
+				if (x == 0 && y == 0) {
+					_grid[0, 0] = cell;
 				}
 				else {
-					_grid[x, y].Alive = false;
+					_grid[x, y] = Instantiate(cell, new Vector3(x, y, 0), Quaternion.identity);
 				}
 			}
 		}
 	}
 
-	private void ToggleGui() {
-		GuiShown          = !GuiShown;
-		Debug.Log(GuiShown);
+	// Check cell in x, y if in special zone
+	private void CheckSpecialZone(int x, int y) {
+		Cell cell = _grid[x, y];
+		cell.IsInSpecialZone = (
+			cell.X >= _zoneX1 && cell.X <= _zoneX2 &&
+			cell.Y >= _zoneY1 && cell.Y <= _zoneY2
+		);
+	}
 
-		Canvas grid = GameObject.Find("Grid").GetComponent<Canvas>();
-		grid.enabled = !GuiShown;
+	// Count neighbours of cell at x, y
+	private void CountNeighbours(int x, int y) {
+		var numNeighbors = 0;
+
+		if (y + 1 < ScreenHeight && _grid[x, y + 1].Alive) {
+			numNeighbors++;
+		}
+
+		if (x + 1 < ScreenWidth && _grid[x + 1, y].Alive) {
+			numNeighbors++;
+		}
+
+		if (y - 1 >= 0 && _grid[x, y - 1].Alive) {
+			numNeighbors++;
+		}
+
+		if (x - 1 >= 0 && _grid[x - 1, y].Alive) {
+			numNeighbors++;
+		}
+
+		if (x + 1 < ScreenWidth && y + 1 < ScreenHeight && _grid[x + 1, y + 1].Alive) {
+			numNeighbors++;
+		}
+
+		if (x - 1 >= 0 && y + 1 < ScreenHeight && _grid[x - 1, y + 1].Alive) {
+			numNeighbors++;
+		}
+
+		if (x + 1 < ScreenWidth && y - 1 >= 0 && _grid[x + 1, y - 1].Alive) {
+			numNeighbors++;
+		}
+
+		if (x - 1 >= 0 && y - 1 >= 0 && _grid[x - 1, y - 1].Alive) {
+			numNeighbors++;
+		}
+
+		_grid[x, y].NeighborsNum = numNeighbors;
+	}
+
+	private void ControlLife(int x, int y) {
+		Cell cell = _grid[x, y];
+
+		// friendly neighbourhood specialized zone (cells don't die from underpopulation)
+		// if (cell.Alive && cell.NeighborsNum < 2 && cell.IsInSpecialZone) {
+		// 	cell.Alive = false;
+		// }
+
+		cell.Alive = cell.NeighborsNum == 2 && cell.Alive || cell.NeighborsNum == 3;
+	}
+
+	// Check each cell if should die/revive
+	private void ComputeTickLogic() {
+		for (int x = 0; x < ScreenWidth; x++) {
+			for (int y = 0; y < ScreenHeight; y++) {
+				CountNeighbours(x, y);
+				CheckSpecialZone(x, y);
+				ControlLife(x, y);
+			}
+		}
+	}
+
+	private void ResetCells() {
+		for (int x = 0; x < ScreenWidth; x++) {
+			for (int y = 0; y < ScreenHeight; y++) {
+				Cell cell = _grid[x, y];
+				cell.Alive           = false;
+				cell.IsInSpecialZone = false;
+			}
+		}
+
+		_zoneX1 = _zoneX2 = _zoneY1 = _zoneY2 = -1;
 	}
 }

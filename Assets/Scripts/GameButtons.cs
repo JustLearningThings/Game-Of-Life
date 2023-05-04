@@ -1,5 +1,4 @@
-﻿using System;
-using TMPro;
+﻿using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,7 +16,7 @@ public class GameButtons : MonoBehaviour {
 			.AddListener((value) => GameData.GameSpeed = value);
 
 		slider.value = GameData.GameSpeed;
-		
+
 		Toggle muteToggle = GameObject.Find("Mute Toggle").GetComponent<Toggle>();
 
 		_musicSource = GameObject.Find("Main Camera").GetComponent<AudioSource>();
@@ -28,11 +27,15 @@ public class GameButtons : MonoBehaviour {
 		});
 
 		muteToggle.isOn = GameData.Muted;
-		
-		_gameSpeedText = GameObject.Find("Game Speed").GetComponent<TextMeshProUGUI>();
+
+		_gameSpeedText = GameObject
+		                 .Find("Game Speed")
+		                 .GetComponent<TextMeshProUGUI>();
+
+		_gameSpeedText.text = GameData.GetGameSpeedPercentage();
 	}
 
 	private void Update() {
-		_gameSpeedText.text = Convert.ToInt32(GameData.GameSpeed * 100).ToString();
+		_gameSpeedText.text = GameData.GetGameSpeedPercentage();
 	}
 }

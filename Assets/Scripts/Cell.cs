@@ -9,14 +9,7 @@ public class Cell : MonoBehaviour {
 
 	public bool Alive {
 		get => _alive;
-		set {
-			GetComponent<SpriteRenderer>().enabled = value;
-			_alive                                 = value;
-		}
-	}
-
-	public void AddState(bool state) {
-		
+		set => _alive = GetComponent<SpriteRenderer>().enabled = value;		
 	}
 
 	public int NeighborsNum;
